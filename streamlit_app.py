@@ -2,6 +2,47 @@ import pandas as pd
 import streamlit as st
 
 
+def default_selection(data, f_zipcode, f_attrubutes):
+    if (f_zipcode != []) & (f_attrubutes != []):
+        df = data.loc[data['zipcode'].isin(f_zipcode),
+                      f_attrubutes]
+
+    elif (f_zipcode != []) & (f_attrubutes == []):
+        df = data.loc[data['zipcode'].isin(f_zipcode), :]
+
+    elif (f_zipcode == []) & (f_attrubutes != []):
+        df = data.loc[:, f_attrubutes]
+
+    else:
+        df = data.copy()
+    return df
+
+
+def default_metrics(data):
+    # Average metrics
+    df1 = data[['id', 'zipcode']].groupby(
+        'zipcode').count().reset_index()
+
+    df2 = data[['id', 'zipcode']].groupby(
+        'zipcode').mean().reset_index()
+
+    df3 = data[['sqft_living', 'zipcode']].groupby(
+        'zipcode').mean().reset_index()
+
+    df4 = data[['price_m2', 'zipcode']].groupby(
+        'zipcode').mean().reset_index()
+
+    # Merge
+    mtc = pd.merge(df1, df2, on='zipcode', how='inner')
+    mtc = pd.merge(mtc, df3, on='zipcode', how='inner')
+    mtc = pd.merge(mtc, df4, on='zipcode', how='inner')
+
+    mtc.columns = [
+        'zipcode', 'total_houses', 'price', 'sqft_living', 'price_m2']
+
+    return mtc
+
+
 st.set_page_config(
     page_title="KC Houses - Jeová Ramos",
     page_icon=":house:",
@@ -19,7 +60,7 @@ def get_data(path: str):
 data = get_data('data/kc_house_data.csv')
 
 # Adding features
-data['price_m2'] = data['price'] / data['sqft_lot']
+data['price_m2'] = data['price'] / (data['sqft_lot'] * 0.092903)
 
 # Showing five lines of data
 st.title("Raw data sample")
@@ -37,30 +78,19 @@ f_attrubutes = st.sidebar.multiselect(
 f_zipcode = st.sidebar.multiselect(
     label='Enter zipcode', options=data['zipcode'].unique())
 
-
-def default_selection(data, f_zipcode, f_attrubutes):
-    if (f_zipcode != []) & (f_attrubutes != []):
-        df = data.loc[data['zipcode'].isin(f_zipcode),
-                      f_attrubutes]
-
-    elif (f_zipcode != []) & (f_attrubutes == []):
-        df = data.loc[data['zipcode'].isin(f_zipcode), :]
-
-    elif (f_zipcode == []) & (f_attrubutes != []):
-        df = data.loc[:, f_attrubutes]
-
-    else:
-        df = data.copy()
-    return df
-
-
 st.write(
     default_selection(
         data,
         f_zipcode,
         f_attrubutes
-    )
+    ).sort_values('price')
 )
+
+st.title("Resume averages")
+st.dataframe(
+    default_metrics(data).sort_values('price_m2'),
+    height=600)
+
 
 if __name__ == '__main__':
     pass
