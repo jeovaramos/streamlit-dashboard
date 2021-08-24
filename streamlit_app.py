@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+from functools import reduce
 
 
-def default_selection(data, f_zipcode, f_attrubutes):
+def subset_data(data, f_zipcode, f_attrubutes):
     if (f_zipcode != []) & (f_attrubutes != []):
         df = data.loc[data['zipcode'].isin(f_zipcode),
                       f_attrubutes]
@@ -19,12 +20,12 @@ def default_selection(data, f_zipcode, f_attrubutes):
     return df
 
 
-def default_metrics(data):
+def default_metrics(data: pd.DataFrame) -> pd.DataFrame:
     # Average metrics
     df1 = data[['id', 'zipcode']].groupby(
         'zipcode').count().reset_index()
 
-    df2 = data[['id', 'zipcode']].groupby(
+    df2 = data[['price', 'zipcode']].groupby(
         'zipcode').mean().reset_index()
 
     df3 = data[['sqft_living', 'zipcode']].groupby(
@@ -33,15 +34,23 @@ def default_metrics(data):
     df4 = data[['price_m2', 'zipcode']].groupby(
         'zipcode').mean().reset_index()
 
-    # Merge
-    mtc = pd.merge(df1, df2, on='zipcode', how='inner')
-    mtc = pd.merge(mtc, df3, on='zipcode', how='inner')
-    mtc = pd.merge(mtc, df4, on='zipcode', how='inner')
+    data_frames = [df1, df2, df3, df4]
+    df_merged = reduce(lambda left, right: pd.merge(
+        left, right, on=['zipcode'], how='inner'), data_frames)
 
-    mtc.columns = [
-        'zipcode', 'total_houses', 'price', 'sqft_living', 'price_m2']
+    df_merged.columns = [
+        'zipcode', 'total_houses', 'mean_price', 'sqft_living', 'price_m2']
 
-    return mtc
+    return df_merged
+
+
+def describe(
+        data: pd.DataFrame,
+        stats: list = ['median', 'skew', 'mad', 'kurt']) -> pd.DataFrame:
+
+    d = data.describe()
+
+    return d.append(data.reindex(d.columns, axis=1).agg(stats)).T
 
 
 st.set_page_config(
@@ -67,10 +76,7 @@ data['price_m2'] = data['price'] / (data['sqft_lot'] * 0.092903)
 st.title("Raw data sample")
 st.write(data.sample(5))
 
-# ======================
 # Data Overview
-# ======================
-
 st.title("Data Overview")
 
 f_attrubutes = st.sidebar.multiselect(
@@ -79,32 +85,34 @@ f_attrubutes = st.sidebar.multiselect(
 f_zipcode = st.sidebar.multiselect(
     label='Enter zipcode', options=data['zipcode'].unique())
 
+# Subset data
+data = subset_data(
+        data, f_zipcode, f_attrubutes)
+
 st.write(
-    default_selection(
-        data,
-        f_zipcode,
-        f_attrubutes
-    ).sort_values('price')
+    data.sort_values('price')
 )
 
-st.title("Resume averages")
-c1, c2 = st.columns((2, 1))
+# Create two columns
+c1, c2 = st.columns(2)
+
+# First Column
+c1.title("Resume averages")
+
+# Calculating metrics
 c1.dataframe(
     default_metrics(data).sort_values('price_m2'),
     height=500, width=500)
 
-# st.title("Statistical descriptive")
+# Second Column
+c2.title("Statistical descriptive")
+
+# Subset numerical columns
 num_attributes = data.select_dtypes(include=['int64', 'float64'])
 num_attributes.drop('id', axis=1, inplace=True)
-average = pd.DataFrame(num_attributes).apply(np.mean)
-median = pd.DataFrame(num_attributes).apply(np.median)
-std = pd.DataFrame(num_attributes).apply(np.std)
-max_ = pd.DataFrame(num_attributes).apply(np.max)
-min_ = pd.DataFrame(num_attributes).apply(np.min)
 
-df1 = pd.concat([average, median, std, max_, min_], axis=1).reset_index()
-df1.columns = ['attributes', 'average', 'median', 'std', 'max', 'min']
-c2.dataframe(df1.sort_values('attributes'),
+# Calculating descriptive statistics
+c2.dataframe(describe(num_attributes),
              height=500, width=500)
 
 
