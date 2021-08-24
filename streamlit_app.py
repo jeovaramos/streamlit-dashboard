@@ -88,11 +88,12 @@ st.write(
 )
 
 st.title("Resume averages")
-st.dataframe(
+c1, c2 = st.columns((2, 1))
+c1.dataframe(
     default_metrics(data).sort_values('price_m2'),
-    height=600)
+    height=500, width=500)
 
-st.title("Statistical descriptive")
+# st.title("Statistical descriptive")
 num_attributes = data.select_dtypes(include=['int64', 'float64'])
 num_attributes.drop('id', axis=1, inplace=True)
 average = pd.DataFrame(num_attributes).apply(np.mean)
@@ -103,7 +104,8 @@ min_ = pd.DataFrame(num_attributes).apply(np.min)
 
 df1 = pd.concat([average, median, std, max_, min_], axis=1).reset_index()
 df1.columns = ['attributes', 'average', 'median', 'std', 'max', 'min']
-st.dataframe(df1.sort_values('attributes'))
+c2.dataframe(df1.sort_values('attributes'),
+             height=500, width=500)
 
 
 if __name__ == '__main__':
