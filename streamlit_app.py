@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -90,6 +91,19 @@ st.title("Resume averages")
 st.dataframe(
     default_metrics(data).sort_values('price_m2'),
     height=600)
+
+st.title("Statistical descriptive")
+num_attributes = data.select_dtypes(include=['int64', 'float64'])
+num_attributes.drop('id', axis=1, inplace=True)
+average = pd.DataFrame(num_attributes).apply(np.mean)
+median = pd.DataFrame(num_attributes).apply(np.median)
+std = pd.DataFrame(num_attributes).apply(np.std)
+max_ = pd.DataFrame(num_attributes).apply(np.max)
+min_ = pd.DataFrame(num_attributes).apply(np.min)
+
+df1 = pd.concat([average, median, std, max_, min_], axis=1).reset_index()
+df1.columns = ['attributes', 'average', 'median', 'std', 'max', 'min']
+st.dataframe(df1.sort_values('attributes'))
 
 
 if __name__ == '__main__':
