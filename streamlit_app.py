@@ -3,7 +3,7 @@ import streamlit as st
 
 
 st.set_page_config(
-    page_title="Streamlit App",
+    page_title="KC Houses - Jeová Ramos",
     page_icon=":house:",
     layout="wide")
 
@@ -22,8 +22,8 @@ data = get_data('data/kc_house_data.csv')
 data['price_m2'] = data['price'] / data['sqft_lot']
 
 # Showing five lines of data
-st.title("Raw data")
-st.write(data.head())
+st.title("Raw data sample")
+st.write(data.sample(5))
 
 # ======================
 # Data Overview
