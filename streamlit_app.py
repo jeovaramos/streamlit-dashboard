@@ -1,4 +1,5 @@
 import folium
+import geopandas as gpd
 import pandas as pd
 import streamlit as st
 from functools import reduce
@@ -11,6 +12,17 @@ def get_data(path: str):
     data = pd.read_csv(path)
 
     return data
+
+
+def get_geofile(url: str = None) -> gpd.GeoDataFrame:
+    if url is None:
+        url = str(
+            'https://opendata.arcgis.com/datasets/'
+            '83fc2e72903343aabff6de8cb445b81c_2.geojson')
+
+    geofile = gpd.read_file(url)
+
+    return geofile
 
 
 def subset_data(data, f_zipcode, f_attrubutes):
@@ -138,7 +150,7 @@ for name, row in df.iterrows():
         popup=str(
             'Price: R$ {:,.2f}\n on {}\n. Features: {}\n sqft, {}\n bedrooms, {}\n bathrooms, {}\n year built'.format(
                 row['price'],
-                row['date'],
+                row['date'],  # Fix date
                 row['sqft_living'],
                 row['bedrooms'],
                 row['bathrooms'],
@@ -150,6 +162,27 @@ for name, row in df.iterrows():
 with c1:
     folium_static(density_map)
 
+# Region Price Map
+c2.header('Price density')
+df = data[['price', 'zipcode']].groupby('zipcode').mean().reset_index()
+df.columns = ['ZIP', 'PRICE']
+
+region_price_map = folium.Map(
+    location=[data['lat'].mean(), data['long'].mean()],
+    default_zoom_start=15)
+
+geofile = get_geofile()
+geofile = geofile[geofile['ZIP'].isin(df['ZIP'].unique())]
+
+region_price_map.choropleth(
+    data=df, columns=df.columns,
+    geo_data=geofile,
+    key_on='feature.properties.ZIP',
+    fill_color='YlOrRd', fill_opacity=0.7, line_opacity=0.2,
+    legend_name='Average price')
+
+with c2:
+    folium_static(region_price_map)
 
 if __name__ == '__main__':
     pass
