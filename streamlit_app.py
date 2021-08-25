@@ -94,11 +94,6 @@ data_raw = get_data('data/kc_house_data.csv')
 data_raw['price_m2'] = data_raw['price'] / (data_raw['sqft_lot'] * 0.092903)
 data_raw['date'] = pd.to_datetime(data_raw['date']).dt.strftime('%Y-%m-%d')
 
-#################################
-# Raw sample
-#################################
-st.title("Raw data sample")
-st.write(data_raw.sample(5, random_state=42))
 
 #################################
 # Interactive Data Overview
@@ -212,7 +207,7 @@ c2.dataframe(describe(num_attributes).sort_index(axis=0),
 #     folium_static(region_price_map)
 
 #################################
-# Houses distribution
+# Interactive charts - Price evolution
 #################################
 st.sidebar.title('Commercial Options')
 st.title('Commercial Attributes')
@@ -255,6 +250,95 @@ df = df[
     (df['date'] <= select_range[1])]
 fig = px.line(df, x='date', y='price')
 st.plotly_chart(fig, use_container_width=True)
+
+#################################
+# Histogram
+#################################
+st.header('Price distribution')
+st.subheader('Select max price')
+
+f_price = st.slider(
+    'Price',
+    int(data_raw['price'].min()),
+    int(data_raw['price'].max()),
+    int(data_raw['price'].mean())
+    )
+
+df = data_raw.loc[data_raw['price'] < f_price]
+fig = px.histogram(df, x='price', nbins=50)
+st.plotly_chart(fig, use_container_width=True)
+
+#################################
+# Houses distribution by features
+#################################
+st.header('Multivariate analysis')
+
+# Filters
+f_bathroomns = st.sidebar.selectbox(
+    'Max number of bathrooms',
+    sorted(
+        set(
+            data_raw['bathrooms'].unique()
+        )
+    ),
+    index=data_raw['bathrooms'].unique().shape[0] - 1
+)
+
+f_floor = st.sidebar.selectbox(
+    'Max number of floors',
+    sorted(
+        set(
+            data_raw['floors'].unique()
+        )
+    ),
+    index=data_raw['floors'].unique().shape[0] - 1
+)
+
+# Charts
+c1, c2, c3 = st.columns(3)
+
+c1.header('Feature 1')
+f1 = c1.selectbox(
+    'Feature 1',
+    options=[
+        'price', 'sqft_living', 'sqft_lot', 'sqft_above',
+        'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode'])
+
+st.sidebar.title('Attributes Options')
+f_feature1 = st.sidebar.selectbox(
+    f'Max number of {f1}',
+    sorted(
+        set(
+            data_raw['bedrooms'].unique()
+        )
+    ),
+    index=data_raw['bedrooms'].unique().shape[0] - 1
+)
+
+st.subheader('Select Attribute')
+feature = st.selectbox(
+    'Features',
+    options=[
+        'price', 'sqft_living', 'sqft_lot', 'sqft_above',
+        'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode'])
+
+df = data_raw.loc[(data_raw[f1] <= f_feature1) &
+                  (data_raw['bathrooms'] <= f_bathroomns) &
+                  (data_raw['floors'] <= f_floor)]
+
+fig = px.histogram(df, x=feature, nbins=50)
+st.plotly_chart(fig, use_container_width=True)
+
+fig = px.histogram(df, x=f1, nbins=20)
+c1.plotly_chart(fig, use_container_width=True)
+
+c2.header('Houses per bathrooms')
+fig = px.histogram(df, x='bathrooms', nbins=20)
+c2.plotly_chart(fig, use_container_width=True)
+
+c3.header('Houses per floor')
+fig = px.histogram(df, x='floors', nbins=20)
+c3.plotly_chart(fig, use_container_width=True)
 
 
 if __name__ == '__main__':
