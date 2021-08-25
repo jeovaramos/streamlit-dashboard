@@ -1,7 +1,16 @@
-import numpy as np
+import folium
 import pandas as pd
 import streamlit as st
 from functools import reduce
+from streamlit_folium import folium_static
+from folium.plugins import MarkerCluster
+
+
+@st.cache(allow_output_mutation=True)
+def get_data(path: str):
+    data = pd.read_csv(path)
+
+    return data
 
 
 def subset_data(data, f_zipcode, f_attrubutes):
@@ -59,13 +68,6 @@ st.set_page_config(
     layout="wide")
 
 
-@st.cache(allow_output_mutation=True)
-def get_data(path: str):
-    data = pd.read_csv(path)
-
-    return data
-
-
 # Read the data
 data = get_data('data/kc_house_data.csv')
 
@@ -114,6 +116,39 @@ num_attributes.drop('id', axis=1, inplace=True)
 # Calculating descriptive statistics
 c2.dataframe(describe(num_attributes),
              height=500, width=500)
+
+#################################
+# Mapping
+#################################
+
+st.title('Region Overview')
+c1, c2 = st.columns(2)
+c1.header('Portfolio Density')
+
+df = data.sample(100)
+# Base map
+density_map = folium.Map(
+    location=[data['lat'].mean(), data['long'].mean()],
+    default_zoom_start=15)
+make_cluster = MarkerCluster().add_to(density_map)
+
+for name, row in df.iterrows():
+    folium.Marker(
+        [row['lat'], row['long']],
+        popup=str(
+            'Price: R$ {:,.2f}\n on {}\n. Features: {}\n sqft, {}\n bedrooms, {}\n bathrooms, {}\n year built'.format(
+                row['price'],
+                row['date'],
+                row['sqft_living'],
+                row['bedrooms'],
+                row['bathrooms'],
+                row['yr_built']
+            )
+        )
+    ).add_to(make_cluster)
+
+with c1:
+    folium_static(density_map)
 
 
 if __name__ == '__main__':
