@@ -77,6 +77,10 @@ def describe(
     return d.append(data.reindex(d.columns, axis=1).agg(stats)).T
 
 
+def datetime_format(x):
+    return dt.datetime.strptime(x, '%Y-%m-%d').date()
+
+
 st.set_page_config(
     page_title="KC Houses - Jeová Ramos",
     page_icon=":house:",
@@ -231,20 +235,24 @@ st.plotly_chart(fig, use_container_width=True)
 
 # Filters
 df = data_raw[['date', 'price']].groupby('date').mean().reset_index()
-date_min = dt.datetime.strptime(
-    data_raw['date'].min(), '%Y-%m-%d').date()
-date_max = dt.datetime.strptime(
-    data_raw['date'].max(), '%Y-%m-%d').date()
+date_min = datetime_format(
+    data_raw['date'].min())
+date_max = datetime_format(
+    data_raw['date'].max())
+days_interval = range((date_max + dt.timedelta(days=1) - date_min).days)
 
-# select_range = st.sidebar.select_slider(
-#     label='Date range',
-#     options=data_raw['date'],
-#     value=[date_min, date_max]
-#     )
 
-# df = df[
-#     (df['date'] >= select_range[0]) &
-#     (df['date'] <= select_range[1])]
+select_range = st.sidebar.select_slider(
+    label='Date range',
+    options=[date_min + dt.timedelta(days=x) for x in days_interval],
+    value=[date_min, date_max]
+    )
+
+df['date'] = df['date'].apply(datetime_format)
+
+df = df[
+    (df['date'] >= select_range[0]) &
+    (df['date'] <= select_range[1])]
 fig = px.line(df, x='date', y='price')
 st.plotly_chart(fig, use_container_width=True)
 
