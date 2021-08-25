@@ -155,8 +155,9 @@ for name, row in df.iterrows():
                 row['bedrooms'],
                 row['bathrooms'],
                 row['yr_built']
-            )
-        )
+            ),
+        ),
+        icon=folium.Icon(color='red', prefix='fa', icon='fas fa-home')
     ).add_to(make_cluster)
 
 with c1:
@@ -166,6 +167,7 @@ with c1:
 c2.header('Price density')
 df = data[['price', 'zipcode']].groupby('zipcode').mean().reset_index()
 df.columns = ['ZIP', 'PRICE']
+# df = df.sample(10)
 
 region_price_map = folium.Map(
     location=[data['lat'].mean(), data['long'].mean()],
