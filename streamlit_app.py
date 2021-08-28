@@ -226,8 +226,8 @@ feature = st.selectbox(
         'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode'])
 
 df = data.loc[(data[f1] <= f_feature1) &
-                  (data['bathrooms'] <= f_bathroomns) &
-                  (data['floors'] <= f_floor)]
+              (data['bathrooms'] <= f_bathroomns) &
+              (data['floors'] <= f_floor)]
 
 fig = px.histogram(df, x=feature, nbins=50)
 st.plotly_chart(fig, use_container_width=True)
