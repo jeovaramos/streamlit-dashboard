@@ -1,19 +1,18 @@
-import folium
 import pandas as pd
 import streamlit as st
 import geopandas as gpd
 import plotly.express as px
 from functools import reduce
 import datetime as dt
-from streamlit_folium import folium_static
-from folium.plugins import MarkerCluster
+from lib.io import ETL
+from lib.sections import Sections
 
 
-@st.cache(allow_output_mutation=True)
-def get_data(path: str):
-    data = pd.read_csv(path)
+# @st.cache(allow_output_mutation=True)
+# def get_data(path: str):
+#     data = pd.read_csv(path)
 
-    return data
+#     return data
 
 
 def get_geofile(url: str = None) -> gpd.GeoDataFrame:
@@ -68,13 +67,13 @@ def default_metrics(data: pd.DataFrame) -> pd.DataFrame:
     return df_merged
 
 
-def describe(
-        data: pd.DataFrame,
-        stats: list = ['median', 'skew', 'mad', 'kurt']) -> pd.DataFrame:
+# def describe(
+#         data: pd.DataFrame,
+#         stats: list = ['median', 'skew', 'mad', 'kurt']) -> pd.DataFrame:
 
-    d = data.describe()
+#     d = data.describe()
 
-    return d.append(data.reindex(d.columns, axis=1).agg(stats)).T
+#     return d.append(data.reindex(d.columns, axis=1).agg(stats)).T
 
 
 def datetime_format(x):
@@ -88,123 +87,27 @@ st.set_page_config(
 
 
 # Read the data
-data_raw = get_data('data/kc_house_data.csv')
+data = ETL().load_data()
 
 # Adding features
-data_raw['price_m2'] = data_raw['price'] / (data_raw['sqft_lot'] * 0.092903)
-data_raw['date'] = pd.to_datetime(data_raw['date']).dt.strftime('%Y-%m-%d')
+ETL().feature_engineering(data)
 
 
 #################################
 # Interactive Data Overview
 #################################
-st.title("Data Overview")
-
-st.sidebar.title('Data Overview Options')
-f_attrubutes = st.sidebar.multiselect(
-    'Enter Columns', data_raw.columns)
-
-f_zipcode = st.sidebar.multiselect(
-    label='Enter zipcode', options=data_raw['zipcode'].unique())
-
-# Subset data
-st.write(
-    subset_data(
-        data_raw,
-        f_zipcode,
-        f_attrubutes
-    )
-)
+Sections.data_overview(data)
 
 #################################
 # Resume average metrics
 #################################
+Sections.resume_metrics(data)
 
-# Create two columns
-c1, c2 = st.columns(2)
-
-# First Column
-c1.title("Resume averages")
-
-# Calculating metrics
-c1.dataframe(
-    default_metrics(data_raw).sort_values('price_m2'),
-    height=500, width=500)
-
-# Second Column
-c2.title("Statistical descriptive")
-
-# Subset numerical columns
-num_attributes = data_raw.select_dtypes(include=['int64', 'float64'])
-num_attributes.drop('id', axis=1, inplace=True)
-
-# Calculating descriptive statistics
-c2.dataframe(describe(num_attributes).sort_index(axis=0),
-             height=500, width=500)
 
 #################################
 # Mapping
 #################################
-
-# st.title('Region Overview')
-# c1, c2 = st.columns(2)
-# c1.header('Portfolio Density')
-
-# df = data_raw.sample(50)
-# # Base map
-# density_map = folium.Map(
-#     location=[data_raw['lat'].mean(), data_raw['long'].mean()],
-#     default_zoom_start=15)
-# make_cluster = MarkerCluster().add_to(density_map)
-
-# for name, row in df.iterrows():
-#     folium.Marker(
-#         location=[row['lat'], row['long']],
-#         popup=folium.Popup(
-#             html=folium.IFrame(
-#                 str(
-#                     '<h4><b>Price:</b> R$ {:,.2f}</h4><h4><b>Features:</b></h4><h6>{} sqft</h6><h6>{} bedrooms</h6> <h6>{} bathrooms</h6><h6>{} year built</h6>'.format(
-#                         row['price'],
-#                         row['sqft_living'],
-#                         row['bedrooms'],
-#                         row['bathrooms'],
-#                         row['yr_built']
-#                     )
-#                 )
-#             ),
-#             min_width=200,
-#             max_width=300,
-#             min_height=500,
-#             max_height=1000,
-#         ),
-#         icon=folium.Icon(color='red', prefix='fa', icon='fas fa-home')
-#     ).add_to(make_cluster)
-
-# with c1:
-#     folium_static(density_map)
-
-# # Region Price Map
-# c2.header('Price density')
-# df = data_raw[['price', 'zipcode']].groupby('zipcode').mean().reset_index()
-# df.columns = ['ZIP', 'PRICE']
-# df = df.sample(5)
-
-# region_price_map = folium.Map(
-#     location=[data_raw['lat'].mean(), data_raw['long'].mean()],
-#     default_zoom_start=15)
-
-# geofile = get_geofile()
-# geofile = geofile[geofile['ZIP'].isin(df['ZIP'].unique())]
-
-# folium.Choropleth(
-#     data=df, columns=df.columns,
-#     geo_data=geofile,
-#     key_on='feature.properties.ZIP',
-#     fill_color='YlOrRd', fill_opacity=0.7, line_opacity=0.2,
-#     legend_name='Average price').add_to(region_price_map)
-
-# with c2:
-#     folium_static(region_price_map)
+Sections.maps(data)
 
 #################################
 # Interactive charts - Price evolution
@@ -213,9 +116,9 @@ st.sidebar.title('Commercial Options')
 st.title('Commercial Attributes')
 
 # Filters
-df = data_raw[['yr_built', 'price']].groupby('yr_built').mean().reset_index()
-date_min = data_raw['yr_built'].min()
-date_max = data_raw['yr_built'].max()
+df = data[['yr_built', 'price']].groupby('yr_built').mean().reset_index()
+date_min = data['yr_built'].min()
+date_max = data['yr_built'].max()
 select_range = st.sidebar.select_slider(
     label='Year built range',
     options=range(date_min, date_max + 1),
@@ -229,11 +132,11 @@ fig = px.line(df, x='yr_built', y='price')
 st.plotly_chart(fig, use_container_width=True)
 
 # Filters
-df = data_raw[['date', 'price']].groupby('date').mean().reset_index()
+df = data[['date', 'price']].groupby('date').mean().reset_index()
 date_min = datetime_format(
-    data_raw['date'].min())
+    data['date'].min())
 date_max = datetime_format(
-    data_raw['date'].max())
+    data['date'].max())
 days_interval = range((date_max + dt.timedelta(days=1) - date_min).days)
 
 
@@ -259,12 +162,12 @@ st.subheader('Select max price')
 
 f_price = st.slider(
     'Price',
-    int(data_raw['price'].min()),
-    int(data_raw['price'].max()),
-    int(data_raw['price'].mean())
+    int(data['price'].min()),
+    int(data['price'].max()),
+    int(data['price'].mean())
     )
 
-df = data_raw.loc[data_raw['price'] < f_price]
+df = data.loc[data['price'] < f_price]
 fig = px.histogram(df, x='price', nbins=50)
 st.plotly_chart(fig, use_container_width=True)
 
@@ -278,20 +181,20 @@ f_bathroomns = st.sidebar.selectbox(
     'Max number of bathrooms',
     sorted(
         set(
-            data_raw['bathrooms'].unique()
+            data['bathrooms'].unique()
         )
     ),
-    index=data_raw['bathrooms'].unique().shape[0] - 1
+    index=data['bathrooms'].unique().shape[0] - 1
 )
 
 f_floor = st.sidebar.selectbox(
     'Max number of floors',
     sorted(
         set(
-            data_raw['floors'].unique()
+            data['floors'].unique()
         )
     ),
-    index=data_raw['floors'].unique().shape[0] - 1
+    index=data['floors'].unique().shape[0] - 1
 )
 
 # Charts
@@ -309,10 +212,10 @@ f_feature1 = st.sidebar.selectbox(
     f'Max number of {f1}',
     sorted(
         set(
-            data_raw['bedrooms'].unique()
+            data['bedrooms'].unique()
         )
     ),
-    index=data_raw['bedrooms'].unique().shape[0] - 1
+    index=data['bedrooms'].unique().shape[0] - 1
 )
 
 st.subheader('Select Attribute')
@@ -322,9 +225,9 @@ feature = st.selectbox(
         'price', 'sqft_living', 'sqft_lot', 'sqft_above',
         'sqft_basement', 'yr_built', 'yr_renovated', 'zipcode'])
 
-df = data_raw.loc[(data_raw[f1] <= f_feature1) &
-                  (data_raw['bathrooms'] <= f_bathroomns) &
-                  (data_raw['floors'] <= f_floor)]
+df = data.loc[(data[f1] <= f_feature1) &
+                  (data['bathrooms'] <= f_bathroomns) &
+                  (data['floors'] <= f_floor)]
 
 fig = px.histogram(df, x=feature, nbins=50)
 st.plotly_chart(fig, use_container_width=True)
