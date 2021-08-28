@@ -1,20 +1,23 @@
 import pandas as pd
 import datetime as dt
+import streamlit as st
 import geopandas as gpd
 from functools import reduce
 
 
-class Load(object):
-    def __init__(self, data_path: str = 'data/kc_houses_data.csv'):
+class ETL(object):
+    def __init__(self, data_path: str = 'data/kc_house_data.csv'):
         self.data_path = data_path
 
         return None
 
+    @st.cache(allow_output_mutation=True)
     def load_data(self) -> pd.DataFrame:
-        data = pd.read_csv(self.path_load)
+        data = pd.read_csv(self.data_path)
 
         return data
 
+    @st.cache()
     def get_geodata(self, url: str = None):
         if url is None:
             url = str(
@@ -25,31 +28,43 @@ class Load(object):
 
         return geofile
 
+    def price_m2(self, data: pd.DataFrame):
+        data['price_m2'] = data['price'] / (data['sqft_lot'] * 0.092903)
 
-class ETL(object):
-    def __init__(self, data: pd.DataFrame) -> None:
-        self.data = data
+        return None
 
-        return self
+    def datetime_format(self, data: pd.DataFrame):
 
-    def subset_data(self, f_zipcode, f_attrubutes):
-        if (f_zipcode != []) & (f_attrubutes != []):
-            df = self.data.loc[
-                self.data['zipcode'].isin(f_zipcode),
-                f_attrubutes]
+        data['date'] = pd.to_datetime(
+            data['date']).dt.strftime('%Y-%m-%d')
 
-        elif (f_zipcode != []) & (f_attrubutes == []):
-            df = self.data.loc[self.data['zipcode'].isin(f_zipcode), :]
+        return None
 
-        elif (f_zipcode == []) & (f_attrubutes != []):
-            df = self.data.loc[:, f_attrubutes]
+    def date_format(x):
+        return dt.datetime.strptime(x, '%Y-%m-%d').date()
+
+    def feature_engineering(self, data: pd.DataFrame):
+        self.price_m2(data)
+        self.datetime_format(data)
+
+        return None
+
+    def subset_data(self, data, f_zipcode, f_columns):
+        if (f_zipcode != []) & (f_columns != []):
+            df = data.loc[data['zipcode'].isin(f_zipcode), f_columns]
+
+        elif (f_zipcode != []) & (f_columns == []):
+            df = data.loc[data['zipcode'].isin(f_zipcode), :]
+
+        elif (f_zipcode == []) & (f_columns != []):
+            df = data.loc[:, ['zipcode'] + f_columns]
 
         else:
-            df = self.data.copy()
+            df = data.copy()
 
         return df
 
-    def default_metrics(data: pd.DataFrame) -> pd.DataFrame:
+    def default_metrics(self, data: pd.DataFrame) -> pd.DataFrame:
         # Average metrics
         df1 = data[['id', 'zipcode']].groupby(
             'zipcode').count().reset_index()
@@ -72,16 +87,11 @@ class ETL(object):
 
         return df_merged
 
-    def describe(
-            data: pd.DataFrame,
-            stats: list = ['median', 'skew', 'mad', 'kurt']) -> pd.DataFrame:
-
+    def extended_describe(self, data: pd.DataFrame) -> pd.DataFrame:
+        stats = ['median', 'skew', 'mad', 'kurt']
         d = data.describe()
 
         return d.append(data.reindex(d.columns, axis=1).agg(stats)).T
-
-    def datetime_format(x):
-        return dt.datetime.strptime(x, '%Y-%m-%d').date()
 
 
 if __name__ == '__main__':
