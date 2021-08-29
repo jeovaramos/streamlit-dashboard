@@ -1,16 +1,63 @@
-from lib.io import ETL
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import folium
 from streamlit_folium import folium_static
 from folium.plugins import MarkerCluster
+from streamlit_lottie import st_lottie
+import plotly.express as px
+from lib.io import ETL
+import streamlit as st
 import datetime as dt
+import pandas as pd
+import requests
+import folium
 
 
 class Sections():
     def __init__(self) -> None:
         pass
+
+    def load_lottieurl(self, url: str):
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+
+        return r.json()
+
+    def header(self):
+
+        lottie_book = self.load_lottieurl(
+            'https://assets4.lottiefiles.com/packages/lf20_fwykef3x.json')
+        st_lottie(lottie_book, speed=1, height=200, key="initial")
+
+        return None
+
+    def hello_card():
+        row0_spacer1, row0_1, row0_spacer2, row0_2, row0_spacer3 = st.columns(
+            (.1, 2, .2, 1, .1))
+
+        row0_1.title('Analytics dashboard')
+        with row0_2:
+            st.write('')
+
+        row0_2.subheader(
+            'A Web App by [Jeová Ramos](https://github.com/jeovaramos)')
+
+        row1_spacer1, row1_1, row1_spacer2 = st.columns((.1, 3.2, .1))
+
+        with row1_1:
+            st.markdown(
+                "Hey there! Welcome to my first Analysis App. "
+                "I am looking for build my data science portfolio, "
+                "so I made this with studie intentions. "
+                "This app is a dashboard for the KC Houses dataset. "
+                "It tries to simulates a product designed to generate "
+                "**valuable insights** for business team.")
+            st.markdown(
+                "If you want to keep in touch or just see other things "
+                "I'm working in, please consider click in the link above "
+                "with my name on it.")
+            st.markdown(
+                "**I hope you enjoy it.** Best regards.")
+
+        return None
 
     def data_overview(data: pd.DataFrame) -> None:
 
